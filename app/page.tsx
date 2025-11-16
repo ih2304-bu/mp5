@@ -1,65 +1,147 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
+  // state for the form
+  const [url, setUrl] = useState("");
+  const [alias, setAlias] = useState("");
+  const [shortenedUrl, setShortenedUrl] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // handle when form is submitted
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setShortenedUrl("");
+    try {
+      // send to api
+      const response = await fetch("/api/shorten", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url, alias }),
+      });
+
+      const data = await response.json();
+
+      // if error
+      if (!response.ok) {
+        setError(data.error || "Failed to shorten URL");
+        setIsLoading(false);
+        return;
+      }
+
+      // if success show the shortened url and clear form
+      if (data.shortenedUrl) {
+        setShortenedUrl(data.shortenedUrl);
+        setUrl("");
+        setAlias("");
+      } else {
+        setError("No shortened URL returned from server");
+      }
+      setIsLoading(false);
+    } catch (error) {
+      setError("Something went wrong. Please try again.");
+      setIsLoading(false);
+    }
+  };
+
+  // copy to clipboard function
+  const handleCopy = async () => {
+    if (shortenedUrl) {
+      try {
+        await navigator.clipboard.writeText(shortenedUrl);
+        alert("Copied to clipboard!");
+      } catch (error) {
+        alert("Failed to copy");
+      }
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100">
+      <div className="w-full max-w-lg">
+        <h1 className="text-3xl font-bold text-center mb-2">URL Shortener</h1>
+        <p className="text-center text-gray-600 mb-6">
+          Shorten your long URLs into compact, shareable links
+        </p>
+
+        <div className="bg-white p-6 rounded shadow">
+          <h2 className="text-lg font-semibold mb-2">Shorten a URL</h2>
+          <p className="text-gray-600 mb-4">
+            Enter a long URL to create a shorter, shareable link
           </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block mb-1">URL</label>
+              <input
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example.com/very/long/url"
+                className="w-full p-2 border rounded"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1">Custom Alias</label>
+              <div className="flex">
+                <span className="p-2 bg-gray-100 border border-r-0 rounded-l">
+                  /
+                </span>
+                <input
+                  type="text"
+                  value={alias}
+                  onChange={(e) => setAlias(e.target.value)}
+                  placeholder="my-custom-alias"
+                  className="flex-1 p-2 border rounded-r"
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full p-2 bg-blue-600 text-white rounded disabled:bg-gray-400"
+            >
+              {isLoading ? "Shortening..." : "Shorten"}
+            </button>
+          </form>
+
+          {error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
+          {shortenedUrl && (
+            <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded">
+              <p className="text-sm mb-2">Your shortened URL:</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={shortenedUrl}
+                  readOnly
+                  className="flex-1 p-2 bg-white border rounded text-sm"
+                />
+                <button
+                  onClick={handleCopy}
+                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
